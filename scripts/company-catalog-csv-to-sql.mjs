@@ -440,7 +440,11 @@ function defaultMarketForLegalType(legalType, presetName) {
 }
 
 function normalizeSearchText(value) {
-  return value.trim().toLowerCase().normalize("NFKC");
+  return hiraganaToKatakana(value.trim().toLowerCase().normalize("NFKC"));
+}
+
+function hiraganaToKatakana(value) {
+  return value.replace(/[\u3041-\u3096]/g, (character) => String.fromCharCode(character.charCodeAt(0) + 0x60));
 }
 
 function normalizeDomain(value) {

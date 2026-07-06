@@ -141,15 +141,17 @@ const fallbackCompanies = [
 export const fallbackCompanyCatalogCount = fallbackCompanies.length;
 
 export function searchFallbackCompanyCatalog(query: string, industry: string | null, sort: string | null): CatalogFallbackCompany[] {
-  const normalizedQuery = normalizeCatalogSearchText(query);
+  const searchTerms = catalogSearchTerms(query);
   const filtered = fallbackCompanies.filter((company) => {
-    const matchesQuery =
-      !normalizedQuery ||
-      company.normalized_name.includes(normalizedQuery) ||
-      company.name.toLowerCase().includes(normalizedQuery) ||
-      (company.name_kana ?? "").includes(normalizedQuery) ||
-      (company.ticker ?? "").includes(normalizedQuery) ||
-      (company.domain ?? "").includes(normalizedQuery);
+    const matchesQuery = searchTerms.some(
+      (term) =>
+        !term ||
+        company.normalized_name.includes(term) ||
+        company.name.toLowerCase().includes(term) ||
+        (company.name_kana ?? "").includes(term) ||
+        (company.ticker ?? "").includes(term) ||
+        (company.domain ?? "").includes(term),
+    );
     return matchesQuery && (!industry || company.industry === industry);
   });
 
@@ -222,6 +224,22 @@ function inferLegalType(name: string): string {
 
 function normalizeCatalogSearchText(input: string): string {
   return input.trim().toLowerCase().normalize("NFKC");
+}
+
+function catalogSearchTerms(input: string): string[] {
+  const normalized = normalizeCatalogSearchText(input);
+  if (!normalized) {
+    return [""];
+  }
+  return Array.from(new Set([normalized, hiraganaToKatakana(normalized), katakanaToHiragana(normalized)]));
+}
+
+function hiraganaToKatakana(input: string): string {
+  return input.replace(/[\u3041-\u3096]/g, (character) => String.fromCharCode(character.charCodeAt(0) + 0x60));
+}
+
+function katakanaToHiragana(input: string): string {
+  return input.replace(/[\u30A1-\u30F6]/g, (character) => String.fromCharCode(character.charCodeAt(0) - 0x60));
 }
 
 function compareNullable(a: string | null, b: string | null): number {
