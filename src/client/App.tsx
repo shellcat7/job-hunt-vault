@@ -1323,7 +1323,7 @@ function CompanyIntakePanel({
       logoUrl: selectedCatalog.logo_url ?? current.logoUrl,
       marketSegment: selectedCatalog.market ?? current.marketSegment,
       careerUrl: current.careerUrl,
-      mypageUrl: keepUserEnteredMyPageUrl(current.mypageUrl, current.domain),
+      mypageUrl: keepUserEnteredMyPageUrl(current.mypageUrl, selectedCatalog.domain ?? current.domain),
       name: selectedCatalog.name,
       nameKana: selectedCatalog.name_kana ?? current.nameKana,
       ticker: selectedCatalog.ticker ?? current.ticker,
@@ -2754,16 +2754,34 @@ function legalTypeFromCatalog(company: CatalogCompany): string {
   }
 }
 
-function keepUserEnteredMyPageUrl(currentUrl: string, currentDomain: string): string {
-  if (!currentUrl || !currentDomain) {
+function keepUserEnteredMyPageUrl(currentUrl: string, catalogDomain: string | null | undefined): string {
+  if (!currentUrl || !catalogDomain) {
     return currentUrl;
   }
-  const normalizedUrl = currentUrl.replace(/\/+$/, "").toLowerCase();
-  const normalizedDomain = currentDomain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "").toLowerCase();
-  if (normalizedUrl === `https://${normalizedDomain}` || normalizedUrl === `http://${normalizedDomain}`) {
+  if (isRootDomainUrl(currentUrl, catalogDomain)) {
     return "";
   }
   return currentUrl;
+}
+
+function isRootDomainUrl(urlValue: string, domainValue: string): boolean {
+  const domain = normalizeDomainHost(domainValue);
+  if (!domain) {
+    return false;
+  }
+  try {
+    const url = new URL(urlValue);
+    const host = normalizeDomainHost(url.hostname);
+    const path = url.pathname.replace(/\/+$/, "");
+    return host === domain && !path && !url.search && !url.hash;
+  } catch {
+    return normalizeDomainHost(urlValue) === domain;
+  }
+}
+
+function normalizeDomainHost(value: string): string {
+  const compact = value.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "");
+  return compact.toLowerCase();
 }
 
 function mapApiTestReport(report: ApiTestReport, company: Company): TestReportDisplay {
