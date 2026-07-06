@@ -1004,18 +1004,47 @@ app.get("/api/company-catalog/search", async (c) => {
       : sort === "ticker"
         ? "ticker IS NULL ASC, ticker ASC, name_kana IS NULL ASC, name_kana ASC, normalized_name ASC"
         : "name_kana IS NULL ASC, name_kana ASC, normalized_name ASC";
-  const normalizedQuery = normalizeCatalogSearchText(query);
+  const searchTerms = catalogSearchTerms(query);
+  const normalizedQuery = searchTerms[0] ?? "";
   const like = `%${normalizedQuery}%`;
+  const kanaLike = `%${searchTerms[1] ?? normalizedQuery}%`;
+  const hiraganaLike = `%${searchTerms[2] ?? normalizedQuery}%`;
 
   const rows = await c.env.DB.prepare(
     `SELECT id, source, source_id, country, name, name_kana, normalized_name, domain, industry, market, ticker, exchange, logo_url, metadata_json, updated_at
      FROM company_catalog
-     WHERE (? = '' OR normalized_name LIKE ? OR LOWER(name) LIKE ? OR ticker LIKE ?)
+     WHERE (? = ''
+       OR normalized_name LIKE ?
+       OR normalized_name LIKE ?
+       OR normalized_name LIKE ?
+       OR LOWER(name) LIKE ?
+       OR LOWER(name) LIKE ?
+       OR LOWER(name) LIKE ?
+       OR name_kana LIKE ?
+       OR name_kana LIKE ?
+       OR name_kana LIKE ?
+       OR ticker LIKE ?
+       OR domain LIKE ?)
        AND (? IS NULL OR industry = ?)
      ORDER BY ${orderBy}
      LIMIT 50`,
   )
-    .bind(normalizedQuery, like, like, like, industry ?? null, industry ?? null)
+    .bind(
+      normalizedQuery,
+      like,
+      kanaLike,
+      hiraganaLike,
+      like,
+      kanaLike,
+      hiraganaLike,
+      like,
+      kanaLike,
+      hiraganaLike,
+      like,
+      like,
+      industry ?? null,
+      industry ?? null,
+    )
     .all();
   const countRow = await c.env.DB.prepare(`SELECT COUNT(*) AS count FROM company_catalog`).first<{ count: number }>();
   const databaseCount = Number(countRow?.count ?? 0);
@@ -1165,6 +1194,22 @@ async function createEventOrTask(c: AppContext, kind: "event" | "task"): Promise
 
 function normalizeCatalogSearchText(input: string): string {
   return input.trim().toLowerCase().normalize("NFKC");
+}
+
+function catalogSearchTerms(input: string): string[] {
+  const normalized = normalizeCatalogSearchText(input);
+  if (!normalized) {
+    return [""];
+  }
+  return Array.from(new Set([normalized, hiraganaToKatakana(normalized), katakanaToHiragana(normalized)]));
+}
+
+function hiraganaToKatakana(input: string): string {
+  return input.replace(/[\u3041-\u3096]/g, (character) => String.fromCharCode(character.charCodeAt(0) + 0x60));
+}
+
+function katakanaToHiragana(input: string): string {
+  return input.replace(/[\u30A1-\u30F6]/g, (character) => String.fromCharCode(character.charCodeAt(0) - 0x60));
 }
 
 function mergeCatalogRows(primaryRows: CatalogFallbackCompany[], secondaryRows: CatalogFallbackCompany[]): CatalogFallbackCompany[] {
