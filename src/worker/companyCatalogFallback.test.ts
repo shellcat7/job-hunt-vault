@@ -9,6 +9,14 @@ describe("fallback company catalog", () => {
     expect(company?.ticker).toBe("9023");
   });
 
+  it("matches reading input across hiragana and katakana", () => {
+    const hiraganaMatches = searchFallbackCompanyCatalog("みつびし", null, null);
+    const katakanaMatches = searchFallbackCompanyCatalog("ミツビシ", null, null);
+
+    expect(hiraganaMatches.some((company) => company.ticker === "7011")).toBe(true);
+    expect(katakanaMatches.some((company) => company.ticker === "7011")).toBe(true);
+  });
+
   it("keeps the documented built-in catalog count in sync", () => {
     expect(fallbackCompanyCatalogCount).toBe(117);
   });
