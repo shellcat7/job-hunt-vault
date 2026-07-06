@@ -1009,34 +1009,52 @@ app.get("/api/company-catalog/search", async (c) => {
   const like = `%${normalizedQuery}%`;
   const kanaLike = `%${searchTerms[1] ?? normalizedQuery}%`;
   const hiraganaLike = `%${searchTerms[2] ?? normalizedQuery}%`;
+  const prefixLike = `${normalizedQuery}%`;
+  const prefixKanaLike = `${searchTerms[1] ?? normalizedQuery}%`;
+  const prefixHiraganaLike = `${searchTerms[2] ?? normalizedQuery}%`;
+  const prefixOnly = shouldUsePrefixOnlyCatalogSearch(normalizedQuery);
+  const primaryLike = prefixOnly ? prefixLike : like;
+  const primaryKanaLike = prefixOnly ? prefixKanaLike : kanaLike;
+  const primaryHiraganaLike = prefixOnly ? prefixHiraganaLike : hiraganaLike;
 
   const rows = await c.env.DB.prepare(
     `SELECT id, source, source_id, country, name, name_kana, normalized_name, domain, industry, market, ticker, exchange, logo_url, metadata_json, updated_at
      FROM company_catalog
      WHERE (? = ''
-       OR normalized_name LIKE ?
-       OR normalized_name LIKE ?
-       OR normalized_name LIKE ?
        OR LOWER(name) LIKE ?
        OR LOWER(name) LIKE ?
        OR LOWER(name) LIKE ?
        OR name_kana LIKE ?
        OR name_kana LIKE ?
        OR name_kana LIKE ?
-       OR ticker LIKE ?
-       OR domain LIKE ?)
+       OR (? = 0 AND (
+         normalized_name LIKE ?
+         OR normalized_name LIKE ?
+         OR normalized_name LIKE ?
+         OR ticker LIKE ?
+         OR domain LIKE ?
+       )))
        AND (? IS NULL OR industry = ?)
-     ORDER BY ${orderBy}
+     ORDER BY
+       CASE
+         WHEN LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR name_kana LIKE ? OR name_kana LIKE ? OR name_kana LIKE ? THEN 0
+         WHEN LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR LOWER(name) LIKE ? OR name_kana LIKE ? OR name_kana LIKE ? OR name_kana LIKE ? THEN 1
+         WHEN ticker = ? THEN 2
+         WHEN domain LIKE ? THEN 3
+         ELSE 4
+       END,
+       ${orderBy}
      LIMIT 50`,
   )
     .bind(
       normalizedQuery,
-      like,
-      kanaLike,
-      hiraganaLike,
-      like,
-      kanaLike,
-      hiraganaLike,
+      primaryLike,
+      primaryKanaLike,
+      primaryHiraganaLike,
+      primaryLike,
+      primaryKanaLike,
+      primaryHiraganaLike,
+      prefixOnly ? 1 : 0,
       like,
       kanaLike,
       hiraganaLike,
@@ -1044,6 +1062,20 @@ app.get("/api/company-catalog/search", async (c) => {
       like,
       industry ?? null,
       industry ?? null,
+      prefixLike,
+      prefixKanaLike,
+      prefixHiraganaLike,
+      prefixLike,
+      prefixKanaLike,
+      prefixHiraganaLike,
+      like,
+      kanaLike,
+      hiraganaLike,
+      like,
+      kanaLike,
+      hiraganaLike,
+      normalizedQuery,
+      prefixLike,
     )
     .all();
   const countRow = await c.env.DB.prepare(`SELECT COUNT(*) AS count FROM company_catalog`).first<{ count: number }>();
@@ -1202,6 +1234,10 @@ function catalogSearchTerms(input: string): string[] {
     return [""];
   }
   return Array.from(new Set([normalized, hiraganaToKatakana(normalized), katakanaToHiragana(normalized)]));
+}
+
+function shouldUsePrefixOnlyCatalogSearch(input: string): boolean {
+  return /^[\u3041-\u3096\u30A1-\u30F6]{1,2}$/.test(input);
 }
 
 function hiraganaToKatakana(input: string): string {

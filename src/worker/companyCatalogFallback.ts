@@ -142,21 +142,18 @@ export const fallbackCompanyCatalogCount = fallbackCompanies.length;
 
 export function searchFallbackCompanyCatalog(query: string, industry: string | null, sort: string | null): CatalogFallbackCompany[] {
   const searchTerms = catalogSearchTerms(query);
+  const prefixOnly = shouldUsePrefixOnlyCatalogSearch(searchTerms[0] ?? "");
   const filtered = fallbackCompanies.filter((company) => {
-    const matchesQuery = searchTerms.some(
-      (term) =>
-        !term ||
-        company.normalized_name.includes(term) ||
-        company.name.toLowerCase().includes(term) ||
-        (company.name_kana ?? "").includes(term) ||
-        (company.ticker ?? "").includes(term) ||
-        (company.domain ?? "").includes(term),
-    );
+    const matchesQuery = matchesCatalogQuery(company, searchTerms, prefixOnly);
     return matchesQuery && (!industry || company.industry === industry);
   });
 
   return filtered
     .sort((a, b) => {
+      const rank = catalogMatchRank(a, searchTerms) - catalogMatchRank(b, searchTerms);
+      if (rank) {
+        return rank;
+      }
       if (sort === "industry") {
         return compareNullable(a.industry, b.industry) || compareNullable(a.name_kana, b.name_kana) || a.name.localeCompare(b.name, "ja");
       }
@@ -166,6 +163,47 @@ export function searchFallbackCompanyCatalog(query: string, industry: string | n
       return compareNullable(a.name_kana, b.name_kana) || a.name.localeCompare(b.name, "ja");
     })
     .slice(0, 50);
+}
+
+function matchesCatalogQuery(company: CatalogFallbackCompany, searchTerms: string[], prefixOnly: boolean): boolean {
+  return searchTerms.some((term) => {
+    if (!term) {
+      return true;
+    }
+    const primaryValues = [company.name.toLowerCase(), company.name_kana ?? ""];
+    if (prefixOnly) {
+      return primaryValues.some((value) => value.startsWith(term));
+    }
+    return (
+      primaryValues.some((value) => value.includes(term)) ||
+      company.normalized_name.includes(term) ||
+      (company.ticker ?? "").includes(term) ||
+      (company.domain ?? "").includes(term)
+    );
+  });
+}
+
+function catalogMatchRank(company: CatalogFallbackCompany, searchTerms: string[]): number {
+  if (searchTerms.every((term) => !term)) {
+    return 0;
+  }
+  const primaryValues = [company.name.toLowerCase(), company.name_kana ?? ""];
+  if (searchTerms.some((term) => term && primaryValues.some((value) => value.startsWith(term)))) {
+    return 0;
+  }
+  if (searchTerms.some((term) => term && primaryValues.some((value) => value.includes(term)))) {
+    return 1;
+  }
+  if (searchTerms.some((term) => term && company.ticker === term)) {
+    return 2;
+  }
+  if (searchTerms.some((term) => term && (company.domain ?? "").startsWith(term))) {
+    return 3;
+  }
+  if (searchTerms.some((term) => term && company.normalized_name.includes(term))) {
+    return 4;
+  }
+  return 5;
 }
 
 function row(
@@ -232,6 +270,10 @@ function catalogSearchTerms(input: string): string[] {
     return [""];
   }
   return Array.from(new Set([normalized, hiraganaToKatakana(normalized), katakanaToHiragana(normalized)]));
+}
+
+function shouldUsePrefixOnlyCatalogSearch(input: string): boolean {
+  return /^[\u3041-\u3096\u30A1-\u30F6]{1,2}$/.test(input);
 }
 
 function hiraganaToKatakana(input: string): string {
