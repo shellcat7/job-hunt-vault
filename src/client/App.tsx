@@ -130,7 +130,7 @@ const copy = {
       kanban: "ボード",
       tests: "適性検査",
       calendar: "日程",
-      vault: "金庫",
+      vault: "ID・パスワード",
       settings: "設定",
     },
     status: {
@@ -146,7 +146,7 @@ const copy = {
       queue: "今日やること",
       pipeline: "選考企業",
       schedule: "日程",
-      vault: "個人金庫",
+      vault: "ID・パスワード",
       logos: "企業情報",
       newCompany: "企業を追加",
     },
@@ -165,7 +165,7 @@ const copy = {
       kanban: "Board",
       tests: "Tests",
       calendar: "Calendar",
-      vault: "Vault",
+      vault: "IDs & passwords",
       settings: "Settings",
     },
     status: {
@@ -181,7 +181,7 @@ const copy = {
       queue: "Priority queue",
       pipeline: "Selection list",
       schedule: "Schedule",
-      vault: "Private vault",
+      vault: "IDs & passwords",
       logos: "Company info",
       newCompany: "Add company",
     },
@@ -843,8 +843,8 @@ function JoinRoomPage({ locale }: { locale: Locale }) {
           <h2>{locale === "ja" ? "共有の境界" : "Shared boundary"}</h2>
           <p>
             {locale === "ja"
-              ? "企業情報と共有進捗はスペース内に出ます。個人の金庫と非公開進捗は本人だけに残ります。"
-              : "Company data and room-visible progress are shared. Vault items and private progress stay personal."}
+              ? "企業情報と共有進捗はスペース内に出ます。ID・パスワードと非公開進捗は本人だけに残ります。"
+              : "Company data and room-visible progress are shared. IDs and passwords stay personal."}
           </p>
         </div>
       </div>
@@ -874,7 +874,7 @@ function RoomPage({ locale, tab }: { locale: Locale; tab: string }) {
     <>
       <header className="page-header compact-header">
         <div>
-          <p className="eyebrow">{locale === "ja" ? "ワークスペース" : "Workspace"}</p>
+          <p className="eyebrow">{locale === "ja" ? "選考スペース" : "Selection workspace"}</p>
           <h1>{title}</h1>
         </div>
         <Link className="secondary-action" to={`/rooms/${roomId}/companies`}>
@@ -1011,10 +1011,13 @@ function RoomContent({ locale, roomId, tab, companyId }: { locale: Locale; roomI
     return <SettingsPanel locale={locale} roomId={roomId} />;
   }
 
+  const urgentCount = roomCompanies.filter((company) => company.dueDate && daysUntil(company.dueDate) <= 3).length;
+
   return (
     <section className="split-layout workspace-overview">
       <div className="surface table-surface overview-primary">
-        <PanelHeader title={locale === "ja" ? "スペース全体" : "Room overview"} actionLabel={locale === "ja" ? "企業追加" : "New company"} to={`/rooms/${roomId}/companies`} icon={Plus} />
+        <PanelHeader title={locale === "ja" ? "選考の概況" : "Selection overview"} actionLabel={locale === "ja" ? "企業追加" : "New company"} to={`/rooms/${roomId}/companies`} icon={Plus} />
+        <WorkspaceSnapshot companies={roomCompanies.length} locale={locale} urgent={urgentCount} />
         <CompanyTable companies={roomCompanies.slice(0, 4)} locale={locale} roomId={roomId} />
       </div>
       <aside className="right-rail">
@@ -1022,6 +1025,38 @@ function RoomContent({ locale, roomId, tab, companyId }: { locale: Locale; roomI
         <LogoProviderPanel company={roomCompanies[0]} locale={locale} />
       </aside>
     </section>
+  );
+}
+
+function WorkspaceSnapshot({ companies, locale, urgent }: { companies: number; locale: Locale; urgent: number }) {
+  const items = [
+    {
+      label: locale === "ja" ? "登録企業" : "Companies",
+      value: `${companies}`,
+      note: locale === "ja" ? "このスペース内" : "in this workspace",
+    },
+    {
+      label: locale === "ja" ? "3日以内の期限" : "Due in 3 days",
+      value: `${urgent}`,
+      note: locale === "ja" ? "未登録なら0件" : "0 if none set",
+    },
+    {
+      label: locale === "ja" ? "ID・パスワード" : "IDs & passwords",
+      value: locale === "ja" ? "個人管理" : "Private",
+      note: locale === "ja" ? "共有スペースとは分離" : "separate from sharing",
+    },
+  ];
+
+  return (
+    <div className="workspace-snapshot" aria-label={locale === "ja" ? "選考概要" : "Selection summary"}>
+      {items.map((item) => (
+        <div className="snapshot-item" key={item.label}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.note}</small>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1377,7 +1412,7 @@ function CompanyIntakePanel({
     const vaultPassphrase = readFormText(data, "vaultPassphrase");
     if (mypagePassword && (!vaultPassphrase || vaultPassphrase.length < 8)) {
       setSubmitting(false);
-      setMessage(locale === "ja" ? "MyPageパスワードを保存する場合は、8文字以上の金庫パスフレーズも入力してください。" : "Enter a vault passphrase of at least 8 characters to save the MyPage password.");
+      setMessage(locale === "ja" ? "MyPageパスワードを保存する場合は、8文字以上のID・パスワード用パスフレーズも入力してください。" : "Enter an IDs & passwords passphrase of at least 8 characters to save the MyPage password.");
       return;
     }
     try {
@@ -1485,14 +1520,14 @@ function CompanyIntakePanel({
       <label className="password-label">
         {locale === "ja" ? "MyPage パスワード" : "MyPage password"}
         <span className="password-field">
-          <input name="mypagePassword" placeholder={locale === "ja" ? "任意・金庫へ暗号化保存" : "Optional, encrypted in vault"} type={passwordVisible ? "text" : "password"} />
+          <input name="mypagePassword" placeholder={locale === "ja" ? "任意・ID/パスワードへ暗号化保存" : "Optional, encrypted for IDs & passwords"} type={passwordVisible ? "text" : "password"} />
           <button type="button" onClick={() => setPasswordVisible((current) => !current)} aria-label={passwordVisible ? (locale === "ja" ? "隠す" : "Hide") : locale === "ja" ? "表示" : "Show"}>
             {passwordVisible ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
           </button>
         </span>
       </label>
       <label>
-        {locale === "ja" ? "金庫パスフレーズ" : "Vault passphrase"}
+        {locale === "ja" ? "ID・パスワード用パスフレーズ" : "IDs & passwords passphrase"}
         <input name="vaultPassphrase" placeholder={locale === "ja" ? "8文字以上・任意" : "8+ characters, optional"} type="password" />
       </label>
       <input name="logoUrl" type="hidden" value={draft.logoUrl} />
@@ -2216,7 +2251,7 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
       setCredentialItems(response.credentialItems);
     } catch (error) {
       setCredentialItems([]);
-      setMessage(error instanceof Error ? error.message : locale === "ja" ? "金庫を取得できませんでした" : "Could not load vault");
+      setMessage(error instanceof Error ? error.message : locale === "ja" ? "ID・パスワードを取得できませんでした" : "Could not load IDs & passwords");
     }
   }, [locale, roomId]);
 
@@ -2235,7 +2270,7 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
       return;
     }
     if (passphrase.length < 8) {
-      setMessage(locale === "ja" ? "金庫パスフレーズは8文字以上にしてください。" : "Use at least 8 characters for the vault passphrase.");
+      setMessage(locale === "ja" ? "ID・パスワード用パスフレーズは8文字以上にしてください。" : "Use at least 8 characters for the IDs & passwords passphrase.");
       return;
     }
     setSubmitting(true);
@@ -2261,7 +2296,7 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
 
   const unlockItem = async (item: ApiVaultItem) => {
     if (!passphrase) {
-      setMessage(locale === "ja" ? "金庫パスフレーズを入力してください。" : "Enter the vault passphrase.");
+      setMessage(locale === "ja" ? "ID・パスワード用パスフレーズを入力してください。" : "Enter the IDs & passwords passphrase.");
       return;
     }
     setUnlockingId(item.id);
@@ -2287,18 +2322,18 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
             <KeyRound size={22} aria-hidden="true" />
           </span>
           <div>
-            <p className="eyebrow">{locale === "ja" ? "個人金庫" : "Personal Vault"}</p>
-            <h2>{locale === "ja" ? "ログイン情報や非公開メモを保管" : "Keep credentials and private notes"}</h2>
+            <p className="eyebrow">{locale === "ja" ? "ID・パスワード" : "IDs & passwords"}</p>
+            <h2>{locale === "ja" ? "ログインIDやパスワードを保管" : "Keep login IDs and passwords"}</h2>
           </div>
         </div>
         <div className="vault-grid">
-          <DetailItem label={locale === "ja" ? "保存項目" : "Items"} value={`${credentialItems.length}`} />
-          <DetailItem label={locale === "ja" ? "復号済み" : "Unlocked"} value={`${Object.keys(decryptedItems).length}`} />
+          <DetailItem label={locale === "ja" ? "保存件数" : "Items"} value={`${credentialItems.length}`} />
+          <DetailItem label={locale === "ja" ? "表示中" : "Unlocked"} value={`${Object.keys(decryptedItems).length}`} />
           <DetailItem label={locale === "ja" ? "共有" : "Sharing"} value={locale === "ja" ? "なし" : "Off"} />
         </div>
         <form className="inline-vault-form vault-form" onSubmit={handleSave}>
           <label>
-            {locale === "ja" ? "金庫パスフレーズ" : "Vault passphrase"}
+            {locale === "ja" ? "ID・パスワード用パスフレーズ" : "IDs & passwords passphrase"}
             <input
               autoComplete="new-password"
               onChange={(event) => setPassphrase(event.target.value)}
@@ -2340,17 +2375,17 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
               );
             })
           ) : (
-            <p className="form-status">{locale === "ja" ? "まだ保存項目はありません。" : "No saved items yet."}</p>
+            <p className="form-status">{locale === "ja" ? "まだ保存したID・パスワードはありません。" : "No saved items yet."}</p>
           )}
         </div>
       </div>
       <aside className="right-rail">
         <div className="surface setup-notes">
-          <h2>{locale === "ja" ? "非公開の扱い" : "Private handling"}</h2>
+          <h2>{locale === "ja" ? "暗号化について" : "Private handling"}</h2>
           <p>
             {locale === "ja"
-              ? "パスフレーズはブラウザ内で鍵を作るためだけに使い、Workerへ送信しません。共有スペースに企業情報を出しても、金庫の中身は本人の暗号文として分離されます。"
-              : "The passphrase is used only in the browser to derive the key. The Worker stores encrypted JSON, and Vault items stay personal even in shared rooms."}
+              ? "パスフレーズはブラウザ内で鍵を作るためだけに使い、Workerへ送信しません。共有スペースに企業情報を出しても、ID・パスワードは本人の暗号文として分離されます。"
+              : "The passphrase is used only in the browser to derive the key. The Worker stores encrypted JSON, and IDs/passwords stay personal even in shared rooms."}
           </p>
         </div>
       </aside>
@@ -2620,8 +2655,8 @@ function SetupNotes({ locale, mode }: { locale: Locale; mode: "personal" | "shar
             ? "最初は自分だけのスペースとして作り、必要になったら共有スペースに変換できます。"
             : "A personal room starts private and can later be converted into a shared room."
           : locale === "ja"
-            ? "企業情報と共有進捗だけをスペースに出します。個人の金庫と非公開進捗は混ぜません。"
-            : "Shared rooms expose company and room-visible progress, while Vault and private progress stay personal."}
+            ? "企業情報と共有進捗だけをスペースに出します。ID・パスワードと非公開進捗は混ぜません。"
+            : "Shared rooms expose company and room-visible progress, while IDs/passwords and private progress stay personal."}
       </p>
     </div>
   );
@@ -2684,14 +2719,14 @@ function StatusBadge({ locale, status }: { locale: Locale; status: CompanyStatus
 
 function titleForTab(tab: string, locale: Locale): string {
   const labels: Record<string, LocalText> = {
-    overview: { ja: "スペース全体", en: "Room overview" },
+    overview: { ja: "選考ダッシュボード", en: "Selection dashboard" },
     companies: { ja: "企業一覧", en: "Companies" },
     "company-detail": { ja: "企業詳細", en: "Company detail" },
     progress: { ja: "進捗マトリクス", en: "Progress matrix" },
     kanban: { ja: "選考ボード", en: "Selection board" },
     tests: { ja: "適性検査レポート", en: "Test reports" },
     calendar: { ja: "日程", en: "Calendar" },
-    vault: { ja: "個人金庫", en: "Personal Vault" },
+    vault: { ja: "ID・パスワード", en: "IDs & passwords" },
     settings: { ja: "スペース設定", en: "Room settings" },
   };
   return text(labels[tab] ?? { ja: "スペース", en: "Room" }, locale);
