@@ -1523,26 +1523,6 @@ function SegmentedFilter({
   );
 }
 
-function DeadlineStrip({ companies, locale, roomId }: { companies: Company[]; locale: Locale; roomId: string }) {
-  const urgent = sortCompanies(companies, "deadline", locale).filter((company) => company.dueDate && daysUntil(company.dueDate) <= 3);
-  return (
-    <section className="deadline-strip" aria-label={locale === "ja" ? "締切アラート" : "Deadline alerts"}>
-      <div>
-        <strong>{locale === "ja" ? "2〜3日前に入った企業" : "Entering the 2-3 day window"}</strong>
-        <span>{locale === "ja" ? "残り時間が短い順に確認" : "Sorted by shortest remaining time"}</span>
-      </div>
-      <div className="deadline-chip-row">
-        {urgent.map((company) => (
-          <Link className={`deadline-chip ${deadlineTone(company.dueDate)}`} key={company.id} to={`/rooms/${roomId}/companies/${company.id}`}>
-            <span>{text(company.name, locale)}</span>
-            <strong>{remainingTimeText(company.dueDate, locale)}</strong>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function SchedulePreview({ companies: rows, locale, roomId }: { companies: Company[]; locale: Locale; roomId: string }) {
   const [items, setItems] = useState<Array<{ companyId: string | null; id: string; kind: string; meta: string; time: string | null; title: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -2717,16 +2697,6 @@ function PanelHeader({
         <Icon size={16} aria-hidden="true" />
         <span>{actionLabel}</span>
       </Link>
-    </div>
-  );
-}
-
-function Metric({ label, value, trend }: { label: string; value: string; trend: string }) {
-  return (
-    <div className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{trend}</small>
     </div>
   );
 }
