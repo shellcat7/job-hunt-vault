@@ -874,7 +874,7 @@ function RoomPage({ locale, tab }: { locale: Locale; tab: string }) {
     <>
       <header className="page-header compact-header">
         <div>
-          <p className="eyebrow">{locale === "ja" ? `スペース ${roomId}` : `Room ${roomId}`}</p>
+          <p className="eyebrow">{locale === "ja" ? "ワークスペース" : "Workspace"}</p>
           <h1>{title}</h1>
         </div>
         <Link className="secondary-action" to={`/rooms/${roomId}/companies`}>
