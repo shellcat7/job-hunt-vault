@@ -849,23 +849,36 @@ function JoinRoomPage({ locale }: { locale: Locale }) {
 
 function RoomPage({ locale, tab }: { locale: Locale; tab: string }) {
   const { roomId, companyId } = useParams();
-  const activeRoomId = roomId ?? "demo-room";
   const title = useMemo(() => titleForTab(tab, locale), [locale, tab]);
+
+  if (!roomId) {
+    return (
+      <section className="surface">
+        <EmptyState
+          actionLabel={locale === "ja" ? "ホームへ戻る" : "Back home"}
+          icon={BriefcaseBusiness}
+          text={locale === "ja" ? "ルームを選択してから開いてください。" : "Choose a room before opening this page."}
+          title={locale === "ja" ? "ルームが見つかりません" : "Room not found"}
+          to="/"
+        />
+      </section>
+    );
+  }
 
   return (
     <>
       <header className="page-header compact-header">
         <div>
-          <p className="eyebrow">{locale === "ja" ? `スペース ${activeRoomId}` : `Room ${activeRoomId}`}</p>
+          <p className="eyebrow">{locale === "ja" ? `スペース ${roomId}` : `Room ${roomId}`}</p>
           <h1>{title}</h1>
         </div>
-        <Link className="secondary-action" to={`/rooms/${activeRoomId}/companies`}>
+        <Link className="secondary-action" to={`/rooms/${roomId}/companies`}>
           <Search size={17} aria-hidden="true" />
           <span>{locale === "ja" ? "検索" : "Search"}</span>
         </Link>
       </header>
-      <RoomNav locale={locale} roomId={activeRoomId} />
-      <RoomContent locale={locale} roomId={activeRoomId} tab={tab} companyId={companyId} />
+      <RoomNav locale={locale} roomId={roomId} />
+      <RoomContent locale={locale} roomId={roomId} tab={tab} companyId={companyId} />
     </>
   );
 }
@@ -1527,12 +1540,6 @@ function SchedulePreview({ companies: rows, locale, roomId }: { companies: Compa
 
   useEffect(() => {
     let active = true;
-    if (roomId === "demo-room") {
-      setItems([]);
-      return () => {
-        active = false;
-      };
-    }
     setLoading(true);
     Promise.all([listEvents(roomId), listTasks(roomId)])
       .then(([eventResponse, taskResponse]) => {
@@ -1612,11 +1619,6 @@ function SchedulePanel({ companies: rows, locale, roomId }: { companies: Company
   const [submittingTask, setSubmittingTask] = useState(false);
 
   const loadSchedule = useCallback(async () => {
-    if (roomId === "demo-room") {
-      setEvents([]);
-      setTasks([]);
-      return;
-    }
     setLoading(true);
     setMessage(null);
     try {
@@ -1644,10 +1646,6 @@ function SchedulePanel({ companies: rows, locale, roomId }: { companies: Company
     const startsAt = dateTimeLocalToIso(readFormText(data, "startsAt"));
     if (!title || !startsAt) {
       setMessage(locale === "ja" ? "予定名と開始日時を入力してください。" : "Enter an event title and start time.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to save events.");
       return;
     }
     setSubmittingEvent(true);
@@ -1678,10 +1676,6 @@ function SchedulePanel({ companies: rows, locale, roomId }: { companies: Company
     const title = readFormText(data, "title");
     if (!title) {
       setMessage(locale === "ja" ? "TODO名を入力してください。" : "Enter a task title.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to save tasks.");
       return;
     }
     setSubmittingTask(true);
@@ -1895,10 +1889,6 @@ function ProgressPanel({ companies: rows, locale, roomId }: { companies: Company
   const [submitting, setSubmitting] = useState(false);
 
   const loadProgress = useCallback(async () => {
-    if (roomId === "demo-room") {
-      setApplications([]);
-      return;
-    }
     setLoading(true);
     setMessage(null);
     try {
@@ -1923,10 +1913,6 @@ function ProgressPanel({ companies: rows, locale, roomId }: { companies: Company
     const companyId = readFormText(data, "companyId");
     if (!companyId) {
       setMessage(locale === "ja" ? "企業を選択してください。" : "Select a company.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to save progress.");
       return;
     }
     setSubmitting(true);
@@ -2080,10 +2066,6 @@ function TestReportsPanel({ companies: rows, locale, roomId }: { companies: Comp
   const [submitting, setSubmitting] = useState(false);
 
   const loadReports = useCallback(async () => {
-    if (roomId === "demo-room") {
-      setReports([]);
-      return;
-    }
     if (!rows.length) {
       setReports([]);
       return;
@@ -2117,10 +2099,6 @@ function TestReportsPanel({ companies: rows, locale, roomId }: { companies: Comp
     const companyId = readFormText(data, "companyId");
     if (!companyId) {
       setMessage(locale === "ja" ? "企業を選択してください。" : "Select a company.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to save reports.");
       return;
     }
     setSubmitting(true);
@@ -2228,10 +2206,6 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
 
   const loadVaultItems = useCallback(async () => {
-    if (roomId === "demo-room") {
-      setCredentialItems([]);
-      return;
-    }
     try {
       const response = await listVaultItems(roomId);
       setCredentialItems(response.credentialItems);
@@ -2257,10 +2231,6 @@ function VaultPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
     }
     if (passphrase.length < 8) {
       setMessage(locale === "ja" ? "金庫パスフレーズは8文字以上にしてください。" : "Use at least 8 characters for the vault passphrase.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to save vault items.");
       return;
     }
     setSubmitting(true);
@@ -2392,10 +2362,6 @@ function SettingsPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
   const [user, setUser] = useState<ApiUser | null>(null);
 
   const loadSettings = useCallback(async () => {
-    if (roomId === "demo-room") {
-      setMembers([]);
-      return;
-    }
     try {
       const [meResponse, memberResponse] = await Promise.all([getMe(), listRoomMembers(roomId)]);
       setUser(meResponse.user);
@@ -2416,10 +2382,6 @@ function SettingsPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
     event.preventDefault();
     if (!user) {
       setMessage(locale === "ja" ? "ログイン後に設定できます。" : "Sign in to update your avatar.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to save avatar settings.");
       return;
     }
     const data = new FormData(event.currentTarget);
@@ -2446,10 +2408,6 @@ function SettingsPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
     event.preventDefault();
     if (!user) {
       setMessage(locale === "ja" ? "ログイン後に設定できます。" : "Sign in to update your avatar.");
-      return;
-    }
-    if (roomId === "demo-room") {
-      setMessage(locale === "ja" ? "保存はスペース作成後に使えます。" : "Create or join a room to upload an avatar.");
       return;
     }
     const file = new FormData(event.currentTarget).get("photo");
@@ -2480,8 +2438,8 @@ function SettingsPanel({ locale, roomId }: { locale: Locale; roomId: string }) {
   };
 
   const handleDeletePhoto = async () => {
-    if (!user || roomId === "demo-room") {
-      setMessage(locale === "ja" ? "スペース作成後に使えます。" : "Create or join a room first.");
+    if (!user) {
+      setMessage(locale === "ja" ? "ログイン後に設定できます。" : "Sign in first.");
       return;
     }
     setSaving(true);
