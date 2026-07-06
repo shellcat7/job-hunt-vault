@@ -384,6 +384,11 @@ export default function App() {
   }, [locale]);
 
   useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = locale === "ja" ? "選考管理" : "Selection Desk";
+  }, [locale]);
+
+  useEffect(() => {
     let active = true;
     void Promise.allSettled([getMe(), getHealth(), listRooms()]).then(([meResult, healthResult, roomsResult]) => {
       if (!active) {
