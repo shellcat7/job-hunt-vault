@@ -443,7 +443,7 @@ export default function App() {
                   to={`/rooms/${room.id}`}
                   className={({ isActive }) => `room-tile${isActive ? " active-room" : ""}`}
                   key={room.id}
-                  title={room.name}
+                  title={roomNavigationTitle(room, locale)}
                 >
                   <span className={`room-avatar ${room.type}`}>
                     {room.type === "personal" ? <LockKeyhole size={15} aria-hidden="true" /> : initialsFor(room.name)}
@@ -706,9 +706,7 @@ function HomeRoomCard({ locale, room }: { locale: Locale; room: ApiRoomListItem 
       </span>
       <span>
         <strong>{room.name}</strong>
-        <small>
-          {roomTypeLabel(room.type, locale)} / {roomRoleLabel(room.role, locale)}
-        </small>
+        <small>{roomSummaryLabel(room, locale)}</small>
       </span>
       <ArrowRight size={18} aria-hidden="true" />
     </Link>
@@ -2981,6 +2979,23 @@ function roomRoleLabel(role: ApiRoomListItem["role"], locale: Locale): string {
     return locale === "ja" ? "オーナー" : "Owner";
   }
   return locale === "ja" ? "メンバー" : "Member";
+}
+
+function roomInviteCodeLabel(room: ApiRoomListItem, locale: Locale): string | null {
+  if (room.type !== "shared" || !room.join_enabled || !room.room_code) {
+    return null;
+  }
+  return locale === "ja" ? `招待コード ${room.room_code}` : `Code ${room.room_code}`;
+}
+
+function roomSummaryLabel(room: ApiRoomListItem, locale: Locale): string {
+  return [roomTypeLabel(room.type, locale), roomRoleLabel(room.role, locale), roomInviteCodeLabel(room, locale)]
+    .filter(Boolean)
+    .join(" / ");
+}
+
+function roomNavigationTitle(room: ApiRoomListItem, locale: Locale): string {
+  return [room.name, roomInviteCodeLabel(room, locale)].filter(Boolean).join(" / ");
 }
 
 function text(value: LocalText, locale: Locale): string {
